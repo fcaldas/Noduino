@@ -12,7 +12,7 @@
 #include <Dhcp.h>
 #include <Ethernet.h>
 #include "restapi.h"
-
+#include "jsonParser.h"
 
 //Network configuration for arduino
 byte mac[] = {0x33, 0xAA, 0xDE, 0xAD, 0xC0, 0xD4}; 
@@ -22,13 +22,18 @@ byte subnet[] = { 255, 255, 0, 0 };
 restServer *myServer;
 
 void callbackFunction(EthernetClient *client, char args[]){
-    Serial.println("GET called!!");
     client->println("{\"callback\":1}");
 }
 
 void postFunction(EthernetClient *client, char args[]){
-    Serial.println("Post called!!!!!!");
     client->println(args);
+}
+
+void ledFunc(EthernetClient *client, char args[]){
+    client->println(args);
+    int v = JSONParse::getInt(args, "ledOn");
+    Serial.write("Led set status:");  
+    Serial.println(v);  
 }
 
 void setup() {
@@ -36,6 +41,7 @@ void setup() {
   myServer = new restServer(mac, ip, gateway, subnet,80);
   myServer->addRoute("/index.php", GET, &callbackFunction);
   myServer->addRoute("/post.php", POST, &postFunction);
+  myServer->addRoute("/led", POST, &ledFunc);
   Serial.println("Starting API");
 }
 

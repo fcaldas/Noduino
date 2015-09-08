@@ -18,7 +18,6 @@ private:
         rtype : Requested method (GET / POST)
    */
   __route *getRoute(char routename[], REQUEST_TYPE rtype){
-    Serial.println("Searching for route");
     for(short i = 0; i < routes.size(); i++){
       Serial.println(routes[i].routename);
       if(strcmp(routes[i].routename,routename) == 0 &&
@@ -55,8 +54,6 @@ private:
         sendHeader(client);
         route->callback(client, json);
      }else{
-        Serial.write("No route for ");
-        Serial.println(routename);
         send404(client); 
      }
   }
@@ -110,8 +107,6 @@ private:
    */
   char * getPostContent(EthernetClient &client){
      char * data = (char *) malloc(sizeof(char) * MAX_REQUEST_SIZE);
-     if(data == NULL)
-       Serial.write("CANT MALLOC");
      unsigned short sizeData = 0;
      unsigned short nBraces = 0;
      bool finished = false;
@@ -133,7 +128,6 @@ private:
           }
         }
      }
-     Serial.write("on new line of post request!");
      finished = false;
      sizeData = 0;
      while (client.connected() && !finished ) {
