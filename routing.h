@@ -1,9 +1,10 @@
 /*
- * Rest API Server for Arduino - Routing classes
+ * Rest API Server for Arduino
  * 
  * Filipe C - fcaldas@canal-plus.fr
  */
 
+#include "constants.h"
 
 enum REQUEST_TYPE {
   GET,
@@ -12,7 +13,9 @@ enum REQUEST_TYPE {
 
 class __request{
 public:
-  String routename;
+  //route name is written as a char array
+  //String datatype was causing a memory leak
+  char routename[ROUTESIZE];
   REQUEST_TYPE rtype;
 };
 
@@ -20,14 +23,14 @@ public:
 class __route{
 
 public:
-  String routename;
+  char routename[ROUTESIZE];
   REQUEST_TYPE rtype;
-  void (*callback)(EthernetClient *client, String *args);
+  void (*callback)(EthernetClient *client, char args[]);
 
-  __route(String rname, REQUEST_TYPE req, 
-          void (*callbackf)(EthernetClient *client, String *args) ){
+  __route(char rname[], REQUEST_TYPE req, 
+          void (*callbackf)(EthernetClient *client, char args[]) ){
     callback = callbackf;
-    routename = rname;
+    strcpy(routename,rname);
     rtype = req;
   }
   __route(){}

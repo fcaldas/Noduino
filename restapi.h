@@ -17,12 +17,15 @@ private:
         routename : Requested route
         rtype : Requested method (GET / POST)
    */
-  __route *getRoute(String routename, REQUEST_TYPE rtype){
+  __route *getRoute(char routename[], REQUEST_TYPE rtype){
+    Serial.println("Searching for route");
     for(short i = 0; i < routes.size(); i++){
-      if(routes[i].routename == routename &&
+      Serial.println(routes[i].routename);
+      if(strcmp(routes[i].routename,routename) == 0 &&
          routes[i].rtype == rtype)
          return &(routes[i]);
     }
+    Serial.println("-----");
     return NULL;
   }
 
@@ -45,12 +48,12 @@ private:
   }
 
   /*Receives a request and looks for a callback method to reply*/
-  void reply(String routename, REQUEST_TYPE rtype, 
-             String &json, EthernetClient *client){
+  void reply(char routename[], REQUEST_TYPE rtype, 
+             char json[], EthernetClient *client){
      __route* route = getRoute(routename, rtype);
      if(route){
         sendHeader(client);
-        route->callback(client, &json);
+        route->callback(client, json);
      }else{
         Serial.write("No route for ");
         Serial.println(routename);
@@ -62,66 +65,83 @@ private:
   __request * getRequest(EthernetClient &client){
       __request *req = new __request();
       bool readingFirst = true;
-      String firstLine, page;
-     
+      char firstLine[MAX_REQUEST_SIZE];
+      char page[ROUTESIZE];
+      short pos = 0;     
       while (client.connected() && readingFirst) {
         if (client.available()) {
           char c = client.read();
           
-          firstLine += c;
+          firstLine[pos] = c;
+          pos++;
   
           //decode first line of the request
           if(c == '\n'){
-            int start;
-            if(firstLine.substring(0,3) == "GET"){
+            short start;
+            char reqtype[5];
+            strncpy(reqtype, firstLine,4);
+            reqtype[4] == 0;
+            if(strcmp(reqtype, "GET ") == 0){
               req->rtype = GET;
               start = 4;
-            }else if(firstLine.substring(0,4) == "POST"){
+            }else if(strcmp(reqtype, "POST") == 0){
               req->rtype = POST;
               start = 5;
             }
-            for(start; start < firstLine.length(); start++){
+            pos = 0;
+            for(start; start < strlen(firstLine); start++){
               if(firstLine[start] == ' ' || firstLine[start] == '\r'){
                 readingFirst = false;
                 break;
               }
-              page += firstLine[start];
+              page[pos] = firstLine[start];
+              pos++;
             }
           }
         }
      }
-     req->routename = page;
+     page[pos] = 0x00;
+     strcpy(req->routename, page);
      return req;
   }
 
   /*
    * Return the content of a POST message
    */
-  String getPostContent(EthernetClient &client){
-     String data = "";
+  char * getPostContent(EthernetClient &client){
+     char * data = (char *) malloc(sizeof(char) * MAX_REQUEST_SIZE);
+     if(data == NULL)
+       Serial.write("CANT MALLOC");
+     unsigned short sizeData = 0;
      unsigned short nBraces = 0;
      bool finished = false;
      while (client.connected() && !finished ) {
         if (client.available()) {
           char c = client.read();
-          data += c;
+          data[sizeData] = c;
+          sizeData++;
           if(c == '\n'){
-            if(data == "\r\n"){
+            if(data[sizeData - 2] == '\r' && sizeData == 2){
               finished = true;
+              sizeData = 0;
             }else{
-              data = "";
+              sizeData = 0;
             }
+          }
+          if(sizeData == MAX_REQUEST_SIZE){
+            sizeData = 0;
           }
         }
      }
-     data = "";
      Serial.write("on new line of post request!");
      finished = false;
+     sizeData = 0;
      while (client.connected() && !finished ) {
         if (client.available()) {
           char c = client.read();
           if(c != '\r' && c != '\n' && c != ' '){
-            data += c;
+            data[sizeData] = c;
+            sizeData++;
             if(c == '{'){
               nBraces++;
             }else if( c == '}'){
@@ -132,7 +152,8 @@ private:
           }
         }
      }
-     
+     data[sizeData] = 0x00;
+     Serial.println(data);
      return data;  
   }
   
@@ -143,13 +164,13 @@ public:
     server->begin();
   }  
 
-  void addRoute(String name, REQUEST_TYPE req, void (* callback)(EthernetClient *client, String *args)){
+  void addRoute(char name[], REQUEST_TYPE req, void (* callback)(EthernetClient *client, char args[])){
     routes.push_back(__route(name, req, callback));
   }
 
   void serve() {
     EthernetClient client = server->available();
-    String json;
+    char *json;
     
     if (client) {
       Serial.write("New client!");
@@ -159,6 +180,7 @@ public:
       if(req->rtype == POST){
         json = getPostContent(client);
         reply(req->routename, req->rtype, json, &client);
+        free(json);
       }else{
         reply(req->routename, req->rtype, json, &client);
       }
