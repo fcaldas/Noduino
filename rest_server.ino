@@ -14,6 +14,8 @@
 #include "restapi.h"
 #include "jsonParser.h"
 
+#define LEDPIN 2
+
 //Network configuration for arduino
 byte mac[] = {0x33, 0xAA, 0xDE, 0xAD, 0xC0, 0xD4}; 
 byte ip[] = {10, 0, 2, 160};
@@ -30,10 +32,14 @@ void postFunction(EthernetClient *client, char args[]){
 }
 
 void ledFunc(EthernetClient *client, char args[]){
-    client->println(args);
-    int v = JSONParse::getInt(args, "ledOn");
+    int v = JSONParse::getInt(args, "\"ledOn\"");
     Serial.write("Led set status:");  
     Serial.println(v);  
+    if(v == 1)
+      digitalWrite(LEDPIN, HIGH);
+    else if(v == 0)
+      digitalWrite(LEDPIN, LOW);
+    client->println("{\"success\":1}");
 }
 
 void setup() {
@@ -43,6 +49,8 @@ void setup() {
   myServer->addRoute("/post.php", POST, &postFunction);
   myServer->addRoute("/led", POST, &ledFunc);
   Serial.println("Starting API");
+  //init pins
+  pinMode(LEDPIN, OUTPUT);
 }
 
 void loop() {

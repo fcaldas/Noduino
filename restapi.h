@@ -133,6 +133,7 @@ private:
      while (client.connected() && !finished ) {
         if (client.available()) {
           char c = client.read();
+          Serial.print(c);
           if(c != '\r' && c != '\n' && c != ' '){
             data[sizeData] = c;
             sizeData++;
@@ -181,7 +182,7 @@ public:
       free(req);
       delay(1);
       client.stop();
-      Serial.println("client disconnected");
+      Serial.println("bye");
 
       Ethernet.maintain();
       
