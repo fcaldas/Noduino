@@ -1,5 +1,11 @@
 /*
  * Primitive JSON parser for arduino
+ * 
+ * Parsing functions: 
+ * 
+ *   -getInt(json, key)
+ *      
+ *      Returns int value for key:int pair
  */
 
 class JSONParse{

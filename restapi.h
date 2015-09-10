@@ -37,7 +37,7 @@ private:
     client->println(F("Connection: close"));
     client->println(F(""));  
   }
-  
+
   /*
    * Send a 404 error message to client
    */

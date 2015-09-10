@@ -5,7 +5,8 @@
  * 
  * Filipe C.
  */
- 
+
+#include <TimerOne.h>
 #include <SPI.h>
 #include <EthernetUdp.h>
 #include <EthernetServer.h>
@@ -13,8 +14,13 @@
 #include <Ethernet.h>
 #include "restapi.h"
 #include "jsonParser.h"
+#include "audioCap.h"
+#include "timeinter.h"
 
 #define LEDPIN 2
+#define SENSORPIN A0
+#define BUTTON1 6
+#define BUTTON2 7
 
 //Network configuration for arduino
 byte mac[] = {0x33, 0xAA, 0xDE, 0xAD, 0xC0, 0xD4}; 
@@ -23,34 +29,48 @@ byte gateway[] = { 10, 0, 0, 1 };
 byte subnet[] = { 255, 255, 0, 0 };
 restServer *myServer;
 
-void callbackFunction(EthernetClient *client, char args[]){
-    client->println("{\"callback\":1}");
+void readButtons(EthernetClient *client, char args[]){
+    bool button1 = digitalRead(BUTTON1);
+    bool button2 = digitalRead(BUTTON2);
+    char retStr[40];
+    sprintf(retStr,"{\"b1\":%d,\"b2\":%d}",button1, button2);
+    client->println(retStr);    
 }
 
-void postFunction(EthernetClient *client, char args[]){
-    client->println(args);
+void setOn(EthernetClient *client, char args[]){
+  int v = JSONParse::getInt(args, "\"time\"");
+  digitalWrite(LEDPIN, HIGH);
+  if(v == 1){
+    TimeInterruption::startCount();
+    Serial.println("Starting timer!");    
+    TimeInterruption::wait();
+    client->print("{\"done\":1,\"time\":"); 
+    client->print(TimeInterruption::nTimes);
+    client->print("}");
+    
+  }else{
+    client->println("{\"done\":1}"); 
+  }
 }
 
-void ledFunc(EthernetClient *client, char args[]){
-    int v = JSONParse::getInt(args, "\"ledOn\"");
-    Serial.write("Led set status:");  
-    Serial.println(v);  
-    if(v == 1)
-      digitalWrite(LEDPIN, HIGH);
-    else if(v == 0)
-      digitalWrite(LEDPIN, LOW);
-    client->println("{\"success\":1}");
+void setOff(EthernetClient *client, char args[]){
+  digitalWrite(LEDPIN, LOW);
+  client->println("{\"done\":1}"); 
 }
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
-  myServer->addRoute("/index.php", GET, &callbackFunction);
-  myServer->addRoute("/post.php", POST, &postFunction);
-  myServer->addRoute("/led", POST, &ledFunc);
+
+  myServer->addRoute("/setOn", POST, &setOn);
+  myServer->addRoute("/setOff", GET, &setOff);
   Serial.println("Starting API");
   //init pins
   pinMode(LEDPIN, OUTPUT);
+  pinMode(BUTTON1, INPUT);
+  pinMode(BUTTON2, INPUT);
+  //interrupt every 100ms
+  TimeInterruption::init(100000);
 }
 
 void loop() {
