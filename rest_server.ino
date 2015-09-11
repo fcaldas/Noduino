@@ -44,8 +44,10 @@ void setOn(EthernetClient *client, char args[]){
     TimeInterruption::startCount();
     Serial.println("Starting timer!");    
     TimeInterruption::wait();
-    client->print("{\"done\":1,\"time\":"); 
-    client->print(TimeInterruption::nTimes);
+    client->print("{\"done\":1,\"ms\":");
+    char buf[20];
+    TimeInterruption::getMs(buf);
+    client->print(buf);
     client->print("}");
     
   }else{
@@ -61,7 +63,7 @@ void setOff(EthernetClient *client, char args[]){
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
-
+  myServer->addRoute("/buttons", GET, &readButtons);
   myServer->addRoute("/setOn", POST, &setOn);
   myServer->addRoute("/setOff", GET, &setOff);
   Serial.println("Starting API");
@@ -70,7 +72,7 @@ void setup() {
   pinMode(BUTTON1, INPUT);
   pinMode(BUTTON2, INPUT);
   //interrupt every 100ms
-  TimeInterruption::init(100000);
+  TimeInterruption::init(50000);
 }
 
 void loop() {

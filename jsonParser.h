@@ -30,7 +30,6 @@ public:
       pos++;
     }
     while(json[pos] - '0' <= 9 && json[pos] - '0' >= 0){
-      Serial.println(json[pos]);
       value = value * 10;
       value = value + (json[pos] - '0');
       pos++;

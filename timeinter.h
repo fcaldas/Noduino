@@ -23,9 +23,7 @@ public:
     //define stop condition!
     if(digitalRead(6) == 1){
       Timer1.detachInterrupt();
-      Serial.write("Interruption finished after");
       TimeInterruption::finished = true;
-      Serial.write(TimeInterruption::nTimes);
     }
   }
 
@@ -39,6 +37,10 @@ public:
     while(TimeInterruption::finished == false) {
       delay(10);
     }
+  }
+
+  static unsigned long getMs(char *c){
+    sprintf(c, "%d", TimeInterruption::period/1000*TimeInterruption::nTimes);
   }
 };
 

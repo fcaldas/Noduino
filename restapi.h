@@ -19,12 +19,10 @@ private:
    */
   __route *getRoute(char routename[], REQUEST_TYPE rtype){
     for(short i = 0; i < routes.size(); i++){
-      Serial.println(routes[i].routename);
       if(strcmp(routes[i].routename,routename) == 0 &&
          routes[i].rtype == rtype)
          return &(routes[i]);
     }
-    Serial.println("-----");
     return NULL;
   }
 
@@ -133,7 +131,6 @@ private:
      while (client.connected() && !finished ) {
         if (client.available()) {
           char c = client.read();
-          Serial.print(c);
           if(c != '\r' && c != '\n' && c != ' '){
             data[sizeData] = c;
             sizeData++;
@@ -148,7 +145,6 @@ private:
         }
      }
      data[sizeData] = 0x00;
-     Serial.println(data);
      return data;  
   }
   
@@ -168,7 +164,6 @@ public:
     char *json;
     
     if (client) {
-      Serial.write("New client!");
       //get header of request
       __request * req = getRequest(client);
       
@@ -182,8 +177,6 @@ public:
       free(req);
       delay(1);
       client.stop();
-      Serial.println("bye");
-
       Ethernet.maintain();
       
     }
