@@ -19,6 +19,7 @@ private:
    */
   __route *getRoute(char routename[], REQUEST_TYPE rtype){
     for(short i = 0; i < routes.size(); i++){
+// 
       if(strcmp(routes[i].routename,routename) == 0 &&
          routes[i].rtype == rtype)
          return &(routes[i]);
@@ -32,6 +33,7 @@ private:
   void sendHeader(EthernetClient *client){
     client->println(F("HTTP/1.1 200 OK"));
     client->println(F("Content-Type: application/json"));
+    client->println(F("Access-Control-Allow-Origin: *"));
     client->println(F("Connection: close"));
     client->println(F(""));  
   }
@@ -62,7 +64,7 @@ private:
       bool readingFirst = true;
       char firstLine[MAX_REQUEST_SIZE];
       char page[ROUTESIZE];
-      short pos = 0;     
+      unsigned short pos = 0;     
       while (client.connected() && readingFirst) {
         if (client.available()) {
           char c = client.read();
@@ -71,8 +73,9 @@ private:
           pos++;
   
           //decode first line of the request
-          if(c == '\n'){
-            short start;
+          if(c == '\r'){
+            unsigned short start;
+            firstLine[pos - 1] = '\0';
             char reqtype[5];
             strncpy(reqtype, firstLine,4);
             reqtype[4] == 0;
@@ -84,18 +87,19 @@ private:
               start = 5;
             }
             pos = 0;
-            for(start; start < strlen(firstLine); start++){
-              if(firstLine[start] == ' ' || firstLine[start] == '\r'){
-                readingFirst = false;
-                break;
-              }
+            
+            for(; start < strlen(firstLine) && readingFirst; start++){
               page[pos] = firstLine[start];
-              pos++;
+              if(firstLine[start] == ' ' || firstLine[start] == '\0'){
+                readingFirst = false;
+              }else{
+                pos++;
+              }
             }
-          }
+            page[pos] = 0x00;
+          }          
         }
      }
-     page[pos] = 0x00;
      strcpy(req->routename, page);
      return req;
   }

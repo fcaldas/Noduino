@@ -1,6 +1,6 @@
 
-#define ROUTESIZE 20
-#define MAX_REQUEST_SIZE 200
+#define ROUTESIZE        20
+#define MAX_REQUEST_SIZE 80
 
 
 //IO Pins used for switching
@@ -22,4 +22,4 @@
 #define P_RFIN1         A4
 #define P_RFIN2         A5
 
-
+#define SERVO_PIN 13

@@ -16,6 +16,7 @@
 #include "jsonParser.h"
 #include "audioCap.h"
 #include "timeinter.h"
+#include "zapTime.h"
 
 #define LEDPIN 2
 #define SENSORPIN A0
@@ -34,50 +35,48 @@ void readButtons(EthernetClient *client, char args[]){
     bool button2 = digitalRead(BUTTON2);
     char retStr[40];
     sprintf(retStr,"{\"b1\":%d,\"b2\":%d}",button1, button2);
-    client->println(retStr);    
+    client->println(retStr);
 }
 
-void setOn(EthernetClient *client, char args[]){
-  int v = JSONParse::getInt(args, "\"time\"");
-  digitalWrite(LEDPIN, HIGH);
-  if(v == 1){
-    TimeInterruption::startCount();
-    Serial.println("Starting timer!");    
-    TimeInterruption::wait();
-    client->print("{\"done\":1,\"ms\":");
-    char buf[20];
-    TimeInterruption::getMs(buf);
-    client->print(buf);
-    client->print("}");
-    
-  }else{
-    client->println("{\"done\":1}"); 
-  }
+void getVideo(EthernetClient *client, char args[]){
+  int v = analogRead(A4);
+  client->print("{\"video\":");
+  client->print(v);
+  client->println("}"); 
 }
 
-void setOff(EthernetClient *client, char args[]){
-  digitalWrite(LEDPIN, LOW);
-  client->println("{\"done\":1}"); 
+void getZap(EthernetClient *client, char args[]){
+  dataZap dZap;
+  dZap.isZapping = false;
+  dZap.nFramesLow = 0;
+  dZap.nFramesHigh = 0;
+  TimeInterruption::data = (void *) &dZap;
+  Serial.println("Launching interruption Cback");
+  TimeInterruption::startCount(&zapTCallback);
+  TimeInterruption::wait();
+  client->print("{\"done\":1,\"ms\":");
+  char buf[20];
+  TimeInterruption::getMs(buf);
+  client->print(buf);
+  client->print("}");
 }
 
 void setup() {
-  Serial.begin(9600);           // set up Serial library at 9600 bps
+  Serial.begin(19200);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
   myServer->addRoute("/buttons", GET, &readButtons);
-  myServer->addRoute("/setOn", POST, &setOn);
-  myServer->addRoute("/setOff", GET, &setOff);
+  myServer->addRoute("/video", GET, &getVideo);
+  myServer->addRoute("/zaptime", GET, &getZap);
   Serial.println("Starting API");
   //init pins
   pinMode(LEDPIN, OUTPUT);
   pinMode(BUTTON1, INPUT);
   pinMode(BUTTON2, INPUT);
-  //interrupt every 100ms
+  //interrupt every 50ms
+  //wont start now!
   TimeInterruption::init(50000);
 }
 
 void loop() {
   myServer->serve();
 }
-
-
-
