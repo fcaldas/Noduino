@@ -19,7 +19,8 @@ private:
    */
   __route *getRoute(char routename[], REQUEST_TYPE rtype){
     for(short i = 0; i < routes.size(); i++){
-// 
+//      Serial.println(routename);
+//      Serial.println(routes[i].routename);
       if(strcmp(routes[i].routename,routename) == 0 &&
          routes[i].rtype == rtype)
          return &(routes[i]);
@@ -154,7 +155,7 @@ private:
   
 public:
   restServer(byte mac[6], byte ip[4], byte gway[4], byte subnet[4], int port){
-    Ethernet.begin(mac, ip, gway, subnet);
+    Ethernet.begin(mac, ip);
     server = new EthernetServer(port);
     server->begin();
   }  

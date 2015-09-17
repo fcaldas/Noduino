@@ -1,80 +1,65 @@
-/* Arduino Test Bank Controller
+/* 
+ *  Arduino Test Bank Controller
  * 
- * This program exposes an REST API to multiple switches and inputs
- * on a Test Bank.
+ *  This program exposes an REST API to multiple switches and inputs
+ *  on a Test Bank.
  * 
- * Filipe C.
+ *  Filipe Caldas
  */
+
+#define SENSORPIN A4
 
 #include <TimerOne.h>
 #include <SPI.h>
 #include <EthernetUdp.h>
 #include <EthernetServer.h>
-#include <Dhcp.h>
 #include <Ethernet.h>
 #include "restapi.h"
 #include "jsonParser.h"
-#include "audioCap.h"
 #include "timeinter.h"
 #include "zapTime.h"
 
 #define LEDPIN 2
-#define SENSORPIN A0
+
 #define BUTTON1 6
 #define BUTTON2 7
 
 //Network configuration for arduino
-byte mac[] = {0x33, 0xAA, 0xDE, 0xAD, 0xC0, 0xD4}; 
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 byte ip[] = {10, 0, 2, 160};
 byte gateway[] = { 10, 0, 0, 1 };
 byte subnet[] = { 255, 255, 0, 0 };
+//byte server[] = { 10,0,2,158 };
+byte server[] = { 10,0,1,25};
 restServer *myServer;
-
-void readButtons(EthernetClient *client, char args[]){
-    bool button1 = digitalRead(BUTTON1);
-    bool button2 = digitalRead(BUTTON2);
-    char retStr[40];
-    sprintf(retStr,"{\"b1\":%d,\"b2\":%d}",button1, button2);
-    client->println(retStr);
-}
+EthernetClient http_client;
 
 void getVideo(EthernetClient *client, char args[]){
-  int v = analogRead(A4);
+  int v = analogRead(SENSORPIN);
   client->print("{\"video\":");
   client->print(v);
   client->println("}"); 
 }
 
-void getZap(EthernetClient *client, char args[]){
-  dataZap dZap;
-  dZap.isZapping = false;
-  dZap.nFramesLow = 0;
-  dZap.nFramesHigh = 0;
-  TimeInterruption::data = (void *) &dZap;
-  Serial.println("Launching interruption Cback");
-  TimeInterruption::startCount(&zapTCallback);
-  TimeInterruption::wait();
-  client->print("{\"done\":1,\"ms\":");
-  char buf[20];
-  TimeInterruption::getMs(buf);
-  client->print(buf);
-  client->print("}");
+
+void doZap(){
+  
 }
 
+
 void setup() {
-  Serial.begin(19200);           // set up Serial library at 9600 bps
+  Serial.begin(9600);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
-  myServer->addRoute("/buttons", GET, &readButtons);
+  delay(1000);
   myServer->addRoute("/video", GET, &getVideo);
-  myServer->addRoute("/zaptime", GET, &getZap);
+  myServer->addRoute("/getlivestatus", POST, &getLiveStatus);
   Serial.println("Starting API");
   //init pins
   pinMode(LEDPIN, OUTPUT);
-  pinMode(BUTTON1, INPUT);
-  pinMode(BUTTON2, INPUT);
   //interrupt every 50ms
-  //wont start now!
+  //won't start now!
   TimeInterruption::init(50000);
+  
 }
 
 void loop() {

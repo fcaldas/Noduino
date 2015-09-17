@@ -32,6 +32,20 @@ template<typename Data> class vector {
       if (d_capacity == d_size) resize(); 
       d_data[d_size++] = x; 
     }; // Adds new value. If needed, allocates more space
+
+
+    void pop(){
+      if(d_size>0)
+        d_size--;
+    }
+
+    void remove(int i){
+      if(i < d_size){
+        int ncopy = d_size - (i+1); //number of elements to copy
+        memcpy( &(d_data[i]), &(d_data[i+1]), ncopy * sizeof(Data));
+        d_size--; //remove last elementX
+      }
+    }
     
     size_t size() const { 
       return d_size; 
