@@ -17,12 +17,6 @@
 #include "restapi.h"
 #include "jsonParser.h"
 #include "timeinter.h"
-#include "zapTime.h"
-
-#define LEDPIN 2
-
-#define BUTTON1 6
-#define BUTTON2 7
 
 //Network configuration for arduino
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
@@ -41,27 +35,34 @@ void getVideo(EthernetClient *client, char args[]){
   client->println("}"); 
 }
 
-
-void doZap(){
+void setPower(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");
   
-}
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
+    digitalWrite(P_ALIM, LOW);
+    client->println(VALID_QUERY);
+  }else if(v == 1){
+    digitalWrite(P_ALIM, HIGH);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
 
+}
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
   delay(1000);
-  myServer->addRoute("/video", GET, &getVideo);
-  myServer->addRoute("/getlivestatus", POST, &getLiveStatus);
+  myServer->addRoute("/power", POST, &setPower);
   Serial.println("Starting API");
   //init pins
-  pinMode(LEDPIN, OUTPUT);
-  //interrupt every 50ms
-  //won't start now!
-  TimeInterruption::init(50000);
-  
+  initIO();
 }
 
 void loop() {
+//  digitalWrite(P_ALIM, HIGH);
   myServer->serve();
 }

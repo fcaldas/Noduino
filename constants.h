@@ -23,3 +23,15 @@
 #define P_RFIN2         A5
 
 #define SERVO_PIN 13
+
+#define INVALID_QUERY "{\"error\":1, \"message\":\"Invalid query\"}"
+#define VALID_QUERY "{\"error\":0, \"message\":\"Query executed\"}"
+
+void initIO() {
+  pinMode(P_ALIM, OUTPUT);
+  pinMode(P_HDMI, OUTPUT);
+  pinMode(P_COMRF, OUTPUT);
+  pinMode(P_USB, OUTPUT);
+  pinMode(P_USB, OUTPUT);
+  pinMode(P_RJ45, OUTPUT);
+}
