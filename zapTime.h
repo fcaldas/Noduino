@@ -56,11 +56,10 @@ void getLiveStatus(EthernetClient *client, char args[]){
   unsigned int dt = JSONParser::getInt(args, "\"dt\"");
   //this will be used as a circular buffer with size = 20
   int data[10];
+  char str[10];
   unsigned int nloop = dt / 10;
   float sum = 0;
-  unsigned long totalSum, derivAvgTTL;
-  int maxDerivTTL;
-  
+
   float derivMoyenne = 0;
   int maxDeriv = 0;
   Serial.println("Call live status");
@@ -68,24 +67,19 @@ void getLiveStatus(EthernetClient *client, char args[]){
   vector<IMG_MODE> imgMode;
   vector<unsigned int> finalMode;
   vector<unsigned int> deltas;
-  vector<float> averages;
+  vector<float> averages, derivates;
   //collect data and classify!
   bool first = true;
 
   //values used on final json
-  maxDerivTTL = 0;
-  totalSum = 0;
-  derivAvgTTL = 0;
   for(int i = 0; i <= nloop; i++){
     //classify last buffer!
     if(i%10 == 0 && first == false){
-      totalSum += sum;
       sum /= 10;
-      derivAvgTTL += derivMoyenne;
       derivMoyenne /= 10;
       deltas.push_back(100); //100 ms
       averages.push_back(sum);
-      maxDerivTTL = (maxDeriv > maxDerivTTL)?maxDeriv:maxDerivTTL;
+//      derivates.push_back(derivMoyenne);
       if(derivMoyenne <= 1.2 && sum <= 25){
         imgMode.push_back(BLACK);
       }else if(derivMoyenne <= 1.0 && maxDeriv < 1.5){
@@ -114,6 +108,7 @@ void getLiveStatus(EthernetClient *client, char args[]){
      while(i < imgMode.size() - 1){
       //if both are live flows merge
        if(imgMode[i] == LIVE && imgMode[i+1] == LIVE){
+          averages[i] = (averages[i] * deltas[i] + averages[i+1] * deltas[i+1])/(deltas[i]+deltas[i+1]);
           deltas[i] += deltas[i+1];
           deltas.remove(i+1);
           imgMode.remove(i+1);
@@ -121,6 +116,7 @@ void getLiveStatus(EthernetClient *client, char args[]){
           merged = true;
        }else if( (imgMode[i] == LIVE && imgMode[i+1] == FREEZE) ||
                  (imgMode[i] == FREEZE && imgMode[i+1] == LIVE)){
+          averages[i] = (averages[i] * deltas[i] + averages[i+1] * deltas[i+1])/(deltas[i]+deltas[i+1]);
           imgMode[i] = LIVE;
           deltas[i] += deltas[i+1];
           deltas.remove(i+1);
@@ -131,12 +127,14 @@ void getLiveStatus(EthernetClient *client, char args[]){
        }else if(imgMode[i] == FREEZE && imgMode[i+1] == FREEZE){
           if(abs(averages[i] - averages[i+1]) > 2)
             imgMode[i] == LIVE; 
+          averages[i] = (averages[i] * deltas[i] + averages[i+1] * deltas[i+1])/(deltas[i]+deltas[i+1]);
           deltas[i] += deltas[i+1];
           deltas.remove(i+1);
           imgMode.remove(i+1);
           averages.remove(i+1);
           merged = true;
        }else if(imgMode[i] == BLACK && imgMode[i+1] == BLACK){
+          averages[i] = (averages[i] * deltas[i] + averages[i+1] * deltas[i+1])/(deltas[i]+deltas[i+1]);
           deltas[i] += deltas[i+1];
           deltas.remove(i+1);
           imgMode.remove(i+1);
@@ -146,6 +144,8 @@ void getLiveStatus(EthernetClient *client, char args[]){
           i++;
      }
   }
+
+  //create JSON
   client->print("{");
   client->print("\"result\":[");
   for(int i = 0; i < imgMode.size(); i++){
@@ -153,28 +153,18 @@ void getLiveStatus(EthernetClient *client, char args[]){
     client->print(deltas[i]);    
     client->print(",\"status\":");
     if(imgMode[i] == BLACK)
-      client->print("\"BLACK\"");
+      client->print("\"BLACK\",");
     else if(imgMode[i] == LIVE)
-      client->print("\"LIVE\"");
+      client->print("\"LIVE\",");
     else if(imgMode[i] == FREEZE)
-      client->print("\"FREEZE\"");
-    
+      client->print("\"FREEZE\",");      
+    client->print("\"avgvalue\":");
+    dtostrf(averages[i], 1, 2, str);
+    client->print(str);
     client->print("}");
     if(i != imgMode.size() - 1)
       client->print(",");
     }
-  client->print("],");
-  float v = ((float)totalSum) / nloop;
-  char toPrint[10];
-  dtostrf(v, 1, 2, toPrint);
-  client->print("\"averageValue\":");
-  client->print(toPrint);
-  client->print(",\"averageDeriv\":");
-  v = ((float)derivAvgTTL) / nloop;
-  dtostrf(v, 1, 2, toPrint);
-  client->print(toPrint);
-  client->print(",\"maxDeriv\":");
-  client->print(maxDerivTTL);
-  client->print("}");
+  client->print("]}");
 }
 
