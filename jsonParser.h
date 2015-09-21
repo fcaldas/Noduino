@@ -3,15 +3,18 @@
  * 
  * Parsing functions: 
  * 
- *   -getInt(json, key)
- *      
- *      Returns int value for key:int pair
  */
 
 class JSONParser{
 public:
   static bool failure;
-  
+
+  /* getInt()
+   * 
+   *   Reads an integer from a json buffer and returns it
+   *   
+   *   {"value" : 123}
+   */
   static int getInt(char json[], char key[]){
     JSONParser::failure = false;
     char *posKey = strstr(json,key);
@@ -39,6 +42,12 @@ public:
     return value;
   }
 
+  /* getChar()
+   * 
+   *   Reads an string from a json buffer to a char array
+   *   
+   *   {"data" : "hello"}
+   */
   static void getChar(char json[], char key[], char dbuffer[], int bufsize){
     JSONParser::failure = false;
     char *posKey = strstr(json,key);
@@ -75,6 +84,32 @@ public:
     strncpy(dbuffer, &(json[initialPos]), n);
     dbuffer[n] = 0x00;
     return;
+  }
+
+  /* getIP()
+   * 
+   *   Reads an IP from a json buffer to a unsigned byte [4]
+   *   
+   *   {"ip" : "192.168.2.1"}
+   */
+  static void getIP(char json[], char key[], byte addr[] ){
+    JSONParser::failure = false;
+    char ipString[20];
+    JSONParser::getChar(json, key, ipString, 20);
+    if(JSONParser::failure)
+      return;
+    short byteNow = 0;
+    addr[0] = 0x00;
+    addr[1] = 0x00;
+    addr[2] = 0x00;
+    addr[3] = 0x00;
+    for(short i = 0; i < strlen(ipString); i++){
+      if(ipString[i] == '.'){
+        byteNow++;
+        continue;
+      }
+      addr[byteNow] = addr[byteNow]*10 + (ipString[i] - '0');
+    }
   }
 
 };

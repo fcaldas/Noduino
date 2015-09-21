@@ -180,7 +180,7 @@ public:
         reply(req->routename, req->rtype, json, &client);
       }
       free(req);
-      delay(1);
+      client.flush();
       client.stop();
       Ethernet.maintain();
       
