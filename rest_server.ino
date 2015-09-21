@@ -42,8 +42,10 @@ void getVideo(EthernetClient *client, char args[]){
 }
 
 
-void doZap(){
-  
+void echo(EthernetClient *client, char args[]){
+  char data[60];
+  JSONParser::getChar(args, "\"text\"", data, 60);
+  client->print(data);
 }
 
 
@@ -53,7 +55,7 @@ void setup() {
   delay(1000);
   myServer->addRoute("/video", GET, &getVideo);
   myServer->addRoute("/getlivestatus", POST, &getLiveStatus);
-  Serial.println("Starting API");
+  myServer->addRoute("/echo", POST, &echo);
   //init pins
   pinMode(LEDPIN, OUTPUT);
   //interrupt every 50ms
