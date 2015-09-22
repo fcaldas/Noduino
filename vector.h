@@ -18,6 +18,20 @@ template<typename Data> class vector {
     ~vector() { 
       free(d_data); 
     };
+
+    /*
+     * Reserve N positions on the vector
+     * to save memory and time with push backs
+     * empties old vector
+     */
+    void reserve(int nItems){
+      if(d_data != NULL){
+        free(d_data);
+      }
+      d_capacity = nItems;
+      d_data = (Data *)malloc(nItems*sizeof(Data));
+      d_size = nItems;
+    }
     
     vector &operator=(vector const &other) { 
       free(d_data); 

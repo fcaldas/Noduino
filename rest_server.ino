@@ -35,9 +35,12 @@ restServer *myServer;
 EthernetClient http_client;
 
 void getVideo(EthernetClient *client, char args[]){
-  int v = analogRead(SENSORPIN);
-  client->print("{\"video\":");
-  client->print(v);
+  int v1 = analogRead(A4);
+  int v2 = analogRead(A5);
+  client->print("{\"video1\":");
+  client->print(v1);
+  client->print(",\"video2\":");
+  client->print(v2);
   client->println("}"); 
 }
 
@@ -56,12 +59,12 @@ void setup() {
   myServer->addRoute("/video", GET, &getVideo);
   myServer->addRoute("/getlivestatus", POST, &getLiveStatus);
   myServer->addRoute("/echo", POST, &echo);
+  myServer->addRoute("/state", POST, &decoderState);
   //init pins
   pinMode(LEDPIN, OUTPUT);
   //interrupt every 50ms
   //won't start now!
   TimeInterruption::init(50000);
-  
 }
 
 void loop() {
