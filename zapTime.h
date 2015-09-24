@@ -1,3 +1,6 @@
+#define SLAVESENSOR A5
+#define MASTERSENSOR A4
+
 enum IMG_MODE {
   BLACK,
   LIVE,
@@ -11,45 +14,13 @@ enum IMG_MODE {
  * The vstatus structure will be stored in TimeInterruption::vstatus void pointer
  */
 
-#define lightSensorPin A4
+#define lightSensorPin MASTERSENSOR
 
 struct dataZap{
   bool isZapping;
   unsigned long nFramesLow;
   unsigned int nFramesHigh;
 };
-
-void zapTCallback(){
-  dataZap *vstatus = (dataZap *) TimeInterruption::data;
-  int value = analogRead(lightSensorPin);
-  TimeInterruption::nTimes++;
-  //will search for a high luminosity level
-  if(vstatus->isZapping){
-      if(value < 20){
-        vstatus->nFramesLow++;
-        vstatus->nFramesHigh = 0;
-      }else{
-        vstatus->nFramesHigh++;
-        Serial.println("Cnt High");
-      }
-  }else{
-      if(value < 20){
-        vstatus->nFramesLow++;
-      }else{
-        vstatus->nFramesLow = 0;
-      }
-      if(vstatus->nFramesLow > 3){
-        vstatus->isZapping = true;
-        Serial.println("set ZAP");
-      }
-  }
-  //finished zapping!
-  if(vstatus->nFramesHigh > 3){
-    TimeInterruption::removeInterruption();
-    //TimeInterruption::nTimes = vstatus->nFramesLow;
-    
-  }
-}
 
 struct __livestatus{
   IMG_MODE status;
@@ -59,13 +30,14 @@ struct __livestatus{
 };
 
 
-void decoderState(EthernetClient *client, char args[]){
-  unsigned int dt = JSONParser::getInt(args, "\"dt\"");
-  //this will be used as a circular buffer with size = 10
-  if(dt>10000){
-    client->println("{\"error\":1,\"message\":\"Max time exceeded\"}");
-    return;
-  }
+/*
+ * Analyses the TV state for twait ms
+ * and returns a __livestatus object
+ */
+__livestatus getTVStatus(int twait){
+  unsigned int dt = twait;
+  __livestatus rstatus;
+  rstatus.delta = twait;
   unsigned int nloop = dt / 10;
   float sum1 = 0;
   float sum2 = 0;
@@ -76,22 +48,23 @@ void decoderState(EthernetClient *client, char args[]){
   float deriv1 = 0, deriv2 = 0;
   int minV1 = 0, minV2 = 0, maxV1 = 0, maxV2 = 0;
   for(unsigned int i = 0; i <= nloop; i++){
-    v1 = analogRead(A4); //master
-    
-    v2 = analogRead(A5);
+    v1 = analogRead(MASTERSENSOR); //master
+    v2 = analogRead(SLAVESENSOR);
     if(i != 0){
       maxDeriv1 = (abs(oldv1 - v1) > maxDeriv1)?abs(oldv1 - v1):maxDeriv1;
       maxDeriv2 = (abs(oldv2 - v2) > maxDeriv2)?abs(oldv2 - v2):maxDeriv2;
+      maxV1 = (v1 > maxV1)?v1:maxV1;
+      maxV2 = (v2 > maxV2)?v2:maxV2;
       minV1 = (v1 < minV1)?v1:minV1;
       minV2 = (v2 < minV2)?v2:minV2;
+      deriv1 += abs(oldv1 - v1);
+      deriv2 += abs(oldv2 - v2);
     }else{
       minV1 = v1;
       maxV1 = v1;
       minV2 = v2;
       maxV2 = v2;
     }
-    deriv1 += abs(oldv1 - v1);
-    deriv2 += abs(oldv2 - v2);
     sum1 += v1;
     sum2 += v2;
     oldv1 = v1;
@@ -103,83 +76,68 @@ void decoderState(EthernetClient *client, char args[]){
   deriv1 /= nloop;
   deriv2 /= nloop;
   IMG_MODE state;
+  Serial.println("yo");
+  Serial.println(sum1);
+  Serial.println(sum2);
+  Serial.println(deriv1);
+  Serial.println(deriv2);
+  Serial.println(maxV2 - minV2);
+  Serial.println(maxV1 - minV1);
+  
   if(deriv1 <= 1.2 && sum1 <= 35 && deriv2 <= 1.2 && sum2 <= 35){
-    state = BLACK;
+    rstatus.status = BLACK;
   }else if(deriv1 <= 2.0 && maxDeriv1 <= 2 && 
            deriv2 <= 2.0 && maxDeriv2 <= 2 &&
            maxV1 - minV1 < 3 && maxV2 - minV2 < 3){
-    state = FREEZE;
+    rstatus.status = FREEZE;
   }else{
-    state = LIVE;
+    rstatus.status = LIVE;
   }
+  rstatus.average = (sum1 + sum2)/2;
+  rstatus.derivate = (deriv1 + deriv2)/2;
+  return rstatus;
+}
+
+
+void decoderState(EthernetClient *client, char args[]){
+  unsigned int dt = JSONParser::getInt(args, "\"dt\"");
+  //this will be used as a circular buffer with size = 10
+  if(dt>10000){
+    client->println("{\"error\":1,\"message\":\"Max time exceeded\"}");
+    return;
+  }
+  __livestatus rstatus = getTVStatus(dt);
+  
   client->print("{\"state\":");
-  if(state == BLACK)
+  if(rstatus.status == BLACK)
     client->print("\"BLACK\"");
-  else if(state == LIVE)
+  else if(rstatus.status == LIVE)
     client->print("\"LIVE\"");
-  else if(state == FREEZE)
+  else if(rstatus.status == FREEZE)
     client->print("\"FREEZE\"");      
   client->println("}");
 }
 
-
 void getLiveStatus(EthernetClient *client, char args[]){
-  
   unsigned int dt = JSONParser::getInt(args, "\"dt\"");
   //this will be used as a circular buffer with size = 10
   if(dt>6000){
     client->println("{\"error\":1,\"message\":\"Max time exceeded\"}");
     return;
   }
-  int data[10];
-  char str[10];
-  unsigned int nloop = dt / 10;
-  float sum = 0;
-
-  float derivMoyenne = 0;
-  int maxDeriv = 0;
-
+  //number of 100ms intervals
+  int nPlages = dt / 100;
   vector<__livestatus> vstatus;
-  //collect vstatus and classify!
-  Serial.println(nloop/10);
-  vstatus.reserve(nloop/10);
-  bool first = true;
-  //values used on final json
-  for(int i = 0; i <= nloop; i++){
-    //classify last buffer!
-    if(i%10 == 0 && first == false){
-      Serial.println(i/10 - 1);
-      sum /= 10;
-      derivMoyenne /= 10;
-      vstatus[i/10 - 1].delta = 100;
-      vstatus[i/10 - 1].average = sum;
-      vstatus[i/10 - 1].derivate = derivMoyenne;
-
-      if(derivMoyenne <= 1.2 && sum <= 35){
-        vstatus[i/10 - 1].status = BLACK;
-      }else if(derivMoyenne <= 1.1 && maxDeriv < 1.5){
-        vstatus[i/10 - 1].status = FREEZE;
-      }else{
-        vstatus[i/10 - 1].status = LIVE;
-      }
-      derivMoyenne = 0;
-      maxDeriv = 0;
-      sum = 0;
-    }
-    first = false;
-    long v = analogRead(A4);
-    v += analogRead(A5);
-    data[i%10] = v/2;
-    sum += data[i%10];
-    if(i%10 != 0){
-      derivMoyenne += abs(data[i%10] - data[(i-1)%10]);
-      maxDeriv = (abs(data[i%10] - data[(i-1)%10])?abs(data[i%10] - data[(i-1)%10]):maxDeriv);
-    }
-    delay(10);
+  vstatus.reserve(nPlages);
+  
+  for(int i = 0; i < nPlages; i++){
+    vstatus[i] = getTVStatus(100);
   }
-  //merge multiple status
-  int i = 0;
+
+  
+  //merge multiple intervals
   bool merged = true;
+  int i = 0;
   while(merged){
      merged = false;
      Serial.println(vstatus.size());
@@ -215,6 +173,7 @@ void getLiveStatus(EthernetClient *client, char args[]){
   }
   Serial.println("Sending data to client");
   //create JSON
+  char str[10];
   client->print("{");
   client->print("\"result\":[");
   for(int i = 0; i < vstatus.size(); i++){

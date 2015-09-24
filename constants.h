@@ -1,6 +1,4 @@
 
-#define ROUTESIZE        20
-#define MAX_REQUEST_SIZE 80
 
 
 //IO Pins used for switching
