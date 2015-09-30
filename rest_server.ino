@@ -14,6 +14,7 @@
 #include <EthernetUdp.h>
 #include <EthernetServer.h>
 #include <Ethernet.h>
+#include <Servo.h>
 #include "restapi.h"
 #include "jsonParser.h"
 #include "timeinter.h"
@@ -28,35 +29,130 @@ byte server[] = { 10,0,1,25};
 restServer *myServer;
 EthernetClient http_client;
 
+void getAudio(EthernetClient *client, char args[]){
+  int v1, v2;
+  v1 = analogRead(P_AUDIOL);
+  v2 = analogRead(P_AUDIOR);
+  client->print("{\"audiol\":");
+  client->print(v1);
+  client->print(",\"audior\":");
+  client->print(v2);
+  client->println("}");  
+}
+
 void getVideo(EthernetClient *client, char args[]){
-  int v = analogRead(SENSORPIN);
+  int v1;
+  v1 = analogRead(P_VIDEO);
   client->print("{\"video\":");
-  client->print(v);
-  client->println("}"); 
+  client->print(v1);
+  client->println("}");
+}
+
+void setCard(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");  
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
+    servoCard.write(90);
+    client->println(VALID_QUERY);
+  }else if(v == 1){
+    servoCard.write(0);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
+}
+
+void p7(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");  
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
+    digitalWrite(P_7, LOW);
+    client->println(VALID_QUERY);
+  }else if(v == 1){
+    digitalWrite(P_7, HIGH);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
 }
 
 void setPower(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
+    digitalWrite(P_POWER, HIGH);
+    client->println(VALID_QUERY);
+  }else if(v == 1){
+    digitalWrite(P_POWER, LOW);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
+}
+
+void p4(EthernetClient *client, char args[]){
   int v = JSONParser::getInt(args, "\"on\"");
   
   if(JSONParser::failure){
     client->println(INVALID_QUERY);
   }else if(v == 0){
-    digitalWrite(P_ALIM, LOW);
+    digitalWrite(P_4, LOW);
     client->println(VALID_QUERY);
   }else if(v == 1){
-    digitalWrite(P_ALIM, HIGH);
+    digitalWrite(P_4, HIGH);
     client->println(VALID_QUERY);
   }else{
     client->println(INVALID_QUERY);
   }
+}
 
+void p3(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");
+  
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
+    digitalWrite(P_3, LOW);
+    client->println(VALID_QUERY);
+  }else if(v == 1){
+    digitalWrite(P_3, HIGH);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
+}
+
+void p2(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");
+  
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
+    digitalWrite(P_2, LOW);
+    client->println(VALID_QUERY);
+  }else if(v == 1){
+    digitalWrite(P_2, HIGH);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
 }
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
   delay(1000);
+  myServer->addRoute("/p7", POST, &p7);
   myServer->addRoute("/power", POST, &setPower);
+  myServer->addRoute("/p4", POST, &p4);
+  myServer->addRoute("/p3", POST, &p3);
+  myServer->addRoute("/p2", POST, &p2);
+  myServer->addRoute("/card", POST, &setCard);
+  myServer->addRoute("/audio", GET, &getAudio);
+  myServer->addRoute("/video", GET, &getVideo);
   Serial.println("Starting API");
   //init pins
   initIO();
