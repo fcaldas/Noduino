@@ -6,10 +6,11 @@
 //IO Pins used for switching
 #define P_7             7
 #define P_POWER         6
-#define P_4             4
+#define P_ETH0          4
 #define P_3             3
-#define P_2             2
+#define P_USB           2
 #define P_SERVO         5
+
 Servo servoCard;
 
 //Following inputs are analog ins
@@ -29,9 +30,13 @@ Servo servoCard;
 void initIO() {
   pinMode(P_7, OUTPUT);
   pinMode(P_POWER, OUTPUT);
-  pinMode(P_4, OUTPUT);
+  pinMode(P_ETH0, OUTPUT);
   pinMode(P_3, OUTPUT);
-  pinMode(P_2, OUTPUT);
+  pinMode(P_USB, OUTPUT);
   servoCard.attach(P_SERVO);
   digitalWrite(P_POWER, HIGH);
+  digitalWrite(P_ETH0, HIGH);
+  digitalWrite(P_USB, HIGH);
+  digitalWrite(P_3, HIGH);
+  digitalWrite(P_7, HIGH);
 }

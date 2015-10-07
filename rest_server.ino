@@ -93,48 +93,61 @@ void setPower(EthernetClient *client, char args[]){
   }
 }
 
-void p4(EthernetClient *client, char args[]){
+
+void setUsb(EthernetClient *client, char args[]){
   int v = JSONParser::getInt(args, "\"on\"");
-  
   if(JSONParser::failure){
     client->println(INVALID_QUERY);
   }else if(v == 0){
-    digitalWrite(P_4, LOW);
+    digitalWrite(P_USB, HIGH);
     client->println(VALID_QUERY);
   }else if(v == 1){
-    digitalWrite(P_4, HIGH);
+    digitalWrite(P_USB, LOW);
     client->println(VALID_QUERY);
   }else{
     client->println(INVALID_QUERY);
   }
 }
 
-void p3(EthernetClient *client, char args[]){
+void setEth0(EthernetClient *client, char args[]){
   int v = JSONParser::getInt(args, "\"on\"");
-  
   if(JSONParser::failure){
     client->println(INVALID_QUERY);
   }else if(v == 0){
-    digitalWrite(P_3, LOW);
+    digitalWrite(P_ETH0, HIGH);
     client->println(VALID_QUERY);
   }else if(v == 1){
+    digitalWrite(P_ETH0, LOW);
+    client->println(VALID_QUERY);
+  }else{
+    client->println(INVALID_QUERY);
+  }
+}
+
+void setP3(EthernetClient *client, char args[]){
+  int v = JSONParser::getInt(args, "\"on\"");
+  if(JSONParser::failure){
+    client->println(INVALID_QUERY);
+  }else if(v == 0){
     digitalWrite(P_3, HIGH);
     client->println(VALID_QUERY);
+  }else if(v == 1){
+    digitalWrite(P_3, LOW);
+    client->println(VALID_QUERY);
   }else{
     client->println(INVALID_QUERY);
   }
 }
 
-void p2(EthernetClient *client, char args[]){
+void setP7(EthernetClient *client, char args[]){
   int v = JSONParser::getInt(args, "\"on\"");
-  
   if(JSONParser::failure){
     client->println(INVALID_QUERY);
   }else if(v == 0){
-    digitalWrite(P_2, LOW);
+    digitalWrite(P_7, HIGH);
     client->println(VALID_QUERY);
   }else if(v == 1){
-    digitalWrite(P_2, HIGH);
+    digitalWrite(P_7, LOW);
     client->println(VALID_QUERY);
   }else{
     client->println(INVALID_QUERY);
@@ -145,14 +158,14 @@ void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
   myServer = new restServer(mac, ip, gateway, subnet,80);
   delay(1000);
-  myServer->addRoute("/p7", POST, &p7);
+  myServer->addRoute("/ethernet", POST, &setEth0);
   myServer->addRoute("/power", POST, &setPower);
-  myServer->addRoute("/p4", POST, &p4);
-  myServer->addRoute("/p3", POST, &p3);
-  myServer->addRoute("/p2", POST, &p2);
+  myServer->addRoute("/usb", POST, &setUsb);
   myServer->addRoute("/card", POST, &setCard);
   myServer->addRoute("/audio", GET, &getAudio);
   myServer->addRoute("/video", GET, &getVideo);
+  myServer->addRoute("/p3", POST, &setP3);
+  myServer->addRoute("/p7", POST, &setP7);
   Serial.println("Starting API");
   //init pins
   initIO();
